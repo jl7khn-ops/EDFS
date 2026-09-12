@@ -39,7 +39,10 @@ android.allow_backup = True
 # python-for-android設定
 # ------------------------------------------------------------------------
 p4a.bootstrap = sdl2
-p4a.branch = develop
+# develop(HEAD追従)は上流の未検証な変更を毎回踏む可能性があるため、
+# 検証済みのmasterブランチに固定する。
+# (libthorvgレシピのIndexError: list index out of range 対策)
+p4a.branch = master
 p4a.local_recipes = recipes
 
 # ------------------------------------------------------------------------
