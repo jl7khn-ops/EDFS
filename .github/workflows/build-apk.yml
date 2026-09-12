@@ -27,8 +27,6 @@ jobs:
                 libtool \
                 pkg-config && \
               rm -rf /var/lib/apt/lists/*
-
-          USER user
           EOF
 
           docker build \
@@ -40,9 +38,11 @@ jobs:
         run: |
           docker run --rm \
             -e BUILDOZER_WARN_ON_ROOT=0 \
-            -v "${{ github.workspace }}:/home/user/hostcwd" \
+            -v "${{ github.workspace }}:/home/buildozer" \
+            -w /home/buildozer \
+            --entrypoint /bin/bash \
             edfs-buildozer:latest \
-            android debug
+            -c "buildozer android debug"
 
       - name: Find APK
         run: |
