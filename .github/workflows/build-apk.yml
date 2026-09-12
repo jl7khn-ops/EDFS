@@ -1,31 +1,56 @@
-name: Build APK
+[app]
 
-on:
-  workflow_dispatch:
+# ------------------------------------------------------------------------
+# 基本情報
+# ------------------------------------------------------------------------
+title = ESDUCT
+package.name = esduct
+package.domain = jp.jl7khn
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,json,txt,html,css,js
+source.exclude_dirs = .github,.git,.buildozer,bin,__pycache__
+source.exclude_patterns = README.md,*.md,.gitignore
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+version = 1.0
 
-      - name: Build Docker image
-        run: |
-          docker build -t edfs-build .
+# ------------------------------------------------------------------------
+# Python依存パッケージ
+# ------------------------------------------------------------------------
+requirements = python3,kivy==2.3.1,requests,beautifulsoup4,pillow,numpy,pandas,plyer,pyjnius,certifi,charset-normalizer,idna,urllib3,six,python-dateutil,pytz
 
-      - name: Build APK
-        run: |
-          docker run --rm \
-            -e BUILDOZER_WARN_ON_ROOT=0 \
-            -v ${{ github.workspace }}:/home/buildozer \
-            -w /home/buildozer \
-            edfs-build \
-            android debug
+orientation = portrait
+fullscreen = 0
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: bin/*.apk
+# ------------------------------------------------------------------------
+# Android固有設定
+# ------------------------------------------------------------------------
+android.permissions = INTERNET,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,WAKE_LOCK,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+android.archs = arm64-v8a
+android.minapi = 24
+android.api = 33
+android.ndk = 25b
+
+android.accept_sdk_license = True
+android.enable_androidx = True
+android.allow_backup = True
+
+# ------------------------------------------------------------------------
+# python-for-android 設定
+# ------------------------------------------------------------------------
+p4a.bootstrap = sdl2
+p4a.branch = master
+
+# GitHub Actionsではp4a.source_dir / local_recipesを使用しない
+# p4a.source_dir =
+# p4a.local_recipes =
+
+# ------------------------------------------------------------------------
+# ログ設定
+# ------------------------------------------------------------------------
+log_level = 2
+warn_on_root = 1
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
