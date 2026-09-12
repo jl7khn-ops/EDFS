@@ -11,15 +11,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build APK using Buildozer Docker
+      - name: Build Docker image
+        run: |
+          docker build -t edfs-build .
+
+      - name: Build APK
         run: |
           docker run --rm \
-            --entrypoint /bin/bash \
             -e BUILDOZER_WARN_ON_ROOT=0 \
             -v ${{ github.workspace }}:/home/buildozer \
             -w /home/buildozer \
-            kivy/buildozer:latest \
-            -c "apt-get update && apt-get install -y autopoint gettext && buildozer android debug"
+            edfs-build \
+            android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
