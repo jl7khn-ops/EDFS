@@ -45,14 +45,32 @@ jobs:
       run: |
         sudo apt-get update -y
         sudo apt-get install -y \
-          git zip unzip \
+          git zip unzip wget \
           python3-pip python3-venv \
           autoconf automake libtool pkg-config \
           zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
           cmake libffi-dev libssl-dev \
           build-essential ccache
 
-    # p4a を事前に clone（最重要）
+    # ------------------------------------------------------------
+    # ★ NDK / SDK を事前配置（Broken pipe を完全に防ぐ）
+    # ------------------------------------------------------------
+    - name: Download Android NDK r25b
+      run: |
+        mkdir -p .buildozer/android/platform
+        wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+        unzip android-ndk-r25b-linux.zip -d .buildozer/android/platform/
+        mv .buildozer/android/platform/android-ndk-r25b .buildozer/android/platform/android-ndk-r25b
+
+    - name: Download Android SDK (command line tools)
+      run: |
+        mkdir -p .buildozer/android/platform/android-sdk
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip commandlinetools-linux-9477386_latest.zip -d .buildozer/android/platform/android-sdk
+
+    # ------------------------------------------------------------
+    # ★ python-for-android をローカル化（ネットワークアクセス禁止）
+    # ------------------------------------------------------------
     - name: Clone python-for-android (local source)
       run: |
         mkdir -p .buildozer/android/platform
