@@ -1,28 +1,40 @@
-name: Build Android APK
+name: Build EDFS APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build APK with Buildozer
+      - name: Build APK
         run: |
           docker run --rm \
-            --entrypoint /bin/bash \
             -e BUILDOZER_WARN_ON_ROOT=0 \
-            -v "${{ github.workspace }}:/home/buildozer" \
-            -w /home/buildozer \
+            -v "${{ github.workspace }}:/home/user/hostcwd" \
             kivy/buildozer:latest \
-            -c "buildozer android debug"
+            bash -lc '
+              set -e
+
+              apt-get update
+              apt-get install -y \
+                autoconf \
+                automake \
+                autopoint \
+                gettext \
+                libtool \
+                pkg-config
+
+              rm -rf /home/user/hostcwd/.buildozer
+
+              cd /home/user/hostcwd
+
+              buildozer android debug
+            '
 
       - name: Find APK
         run: |
@@ -31,6 +43,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ESDUCT-APK
+          name: EDFS-APK
           path: bin/*.apk
           if-no-files-found: error
