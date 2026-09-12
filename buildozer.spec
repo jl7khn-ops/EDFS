@@ -41,9 +41,10 @@ android.allow_backup = True
 p4a.bootstrap = sdl2
 p4a.branch = develop
 
-# ★ GitHub Actions での Broken pipe を完全に防ぐための最重要設定
-p4a.source_dir = .buildozer/android/platform/python-for-android
-p4a.local_recipes = .buildozer/android/platform/python-for-android/recipes
+# ★ GitHub Actions では p4a.source_dir / local_recipes を使わない
+# （Docker 内で自動取得されるため）
+# p4a.source_dir =
+# p4a.local_recipes =
 
 # ------------------------------------------------------------------------
 # ログ設定
