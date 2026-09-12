@@ -9,7 +9,7 @@ package.domain = jp.jl7khn
 
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,json,txt,html,css,js
-source.exclude_dirs = .github,.git,.buildozer,bin,__pycache__
+source.exclude_dirs = .github,.git,.buildozer,bin,__pycache__,recipes
 source.exclude_patterns = README.md,*.md,.gitignore
 
 version = 1.0
@@ -36,15 +36,11 @@ android.enable_androidx = True
 android.allow_backup = True
 
 # ------------------------------------------------------------------------
-# python-for-android 設定
+# python-for-android設定
 # ------------------------------------------------------------------------
 p4a.bootstrap = sdl2
 p4a.branch = develop
-
-# ★ GitHub Actions では p4a.source_dir / local_recipes を使わない
-# （Docker 内で自動取得されるため）
-# p4a.source_dir =
-# p4a.local_recipes =
+p4a.local_recipes = recipes
 
 # ------------------------------------------------------------------------
 # ログ設定
