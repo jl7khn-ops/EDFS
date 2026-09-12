@@ -15,9 +15,10 @@ jobs:
         run: |
           docker run --rm \
             -e BUILDOZER_WARN_ON_ROOT=0 \
+            -w /home/buildozer \
             -v ${{ github.workspace }}:/home/buildozer \
             kivy/buildozer:latest \
-            buildozer android debug
+            /usr/bin/buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
