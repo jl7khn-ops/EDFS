@@ -3,30 +3,7 @@ name: Build ESDUCT APK
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: {}
-
-# 【設計方針・エラー回避のための注意点】
-#
-# 1) runs-on は "ubuntu-latest" ではなく "ubuntu-22.04" を明示指定する。
-#    ubuntu-latest は GitHub 側の都合で参照先イメージが将来切り替わり得るため、
-#    ある日突然 apt パッケージ名が変わってビルドが壊れる、という事故を防ぐ。
-#
-# 2) Docker系のビルド用GitHub Action(例: ArtemSBulgakov/buildozer-action)は
-#    使用しない。このアクションが内部で参照する Docker イメージ
-#    (kivy/buildozer:latest) が破損しており pull に失敗するという報告が
-#    複数確認できたため、依存を避けて Ubuntu ランナー上で buildozer を
-#    直接 pip インストールして実行する、より透明性の高い構成にする。
-#
-# 3) Cython は 0.29系に固定してから buildozer を実行する。
-#    numpy/pandas recipe のビルドは Cython 3系だと失敗しやすいという
-#    報告が複数あるため、実績のあるバージョンへ明示的に固定する。
-#
-# 4) .buildozer ディレクトリ(Android SDK/NDKや各recipeのビルド成果物)は
-#    actions/cache でキャッシュする。初回ビルドは numpy/pandas のコンパイルを
-#    含むため 40分〜60分程度かかることがあるが、2回目以降はキャッシュにより
-#    大幅に短縮できる。
-#
-# 5) job全体の timeout を明示する(初回ビルドの長時間化に対応するため)。
+  workflow_dispatch:
 
 jobs:
   build:
@@ -34,90 +11,92 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
 
-      - name: Cache buildozer global directory
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.buildozer
-          key: buildozer-global-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-global-
+    # Buildozer / p4a キャッシュ
+    - name: Cache buildozer global directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer
+        key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+        restore-keys: buildozer-global-
 
-      - name: Cache buildozer project (.buildozer) directory
-        uses: actions/cache@v4
-        with:
-          path: |
-            .buildozer
-          key: buildozer-project-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-project-${{ runner.os }}-
+    - name: Cache buildozer project directory
+      uses: actions/cache@v4
+      with:
+        path: .buildozer
+        key: buildozer-project-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+        restore-keys: buildozer-project-${{ runner.os }}-
 
-      # ITPFS/buildozer公式ドキュメント・複数の実績あるガイドで確認できた
-      # 「Ubuntu上でbuildozerを動かすために必要なホスト側パッケージ」一式。
-      # ubuntu-22.04を明示的に固定しているため、ここに列挙したパッケージ名は
-      # 将来の"ubuntu-latest"切り替えによる突然の破損を受けない。
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y \
-            git zip unzip \
-            python3-pip python3-venv \
-            autoconf automake libtool pkg-config \
-            zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
-            cmake libffi-dev libssl-dev \
-            build-essential ccache
+    # 必須パッケージ
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          git zip unzip \
+          python3-pip python3-venv \
+          autoconf automake libtool pkg-config \
+          zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
+          cmake libffi-dev libssl-dev \
+          build-essential ccache
 
-      - name: Install Buildozer and pinned Cython
-        run: |
-          python3 -m pip install --upgrade pip
-          # 【重要】Cythonは0.29系に固定する。numpy/pandas recipeのビルド中に
-          # Cython 3系だと失敗する事例が複数報告されているための予防策。
-          # ここでビルドが失敗する場合、最初に見直すべき箇所の一つがこの
-          # Cythonバージョン固定である(README.mdのトラブルシューティング参照)。
-          python3 -m pip install --upgrade "Cython==0.29.36"
-          python3 -m pip install --upgrade buildozer
+    # p4a を事前に clone（最重要）
+    - name: Clone python-for-android (local source)
+      run: |
+        mkdir -p .buildozer/android/platform
+        git clone --depth 1 https://github.com/kivy/python-for-android.git \
+          .buildozer/android/platform/python-for-android
 
-      - name: Build APK (debug)
-        run: |
-          yes | buildozer -v android debug
+    # Buildozer + Cython
+    - name: Install Buildozer and pinned Cython
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install "Cython==0.29.36"
+        python3 -m pip install buildozer
 
-      - name: Locate built APK
-        id: locate_apk
-        run: |
-          APK_PATH=$(find bin -maxdepth 1 -name "*.apk" | head -n 1)
-          if [ -z "$APK_PATH" ]; then
-            echo "APKファイルが見つかりませんでした" >&2
-            exit 1
-          fi
-          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
+    # APK ビルド
+    - name: Build APK (debug)
+      run: |
+        yes | buildozer -v android debug
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ESDUCT-debug-apk
-          path: ${{ steps.locate_apk.outputs.apk_path }}
-          if-no-files-found: error
+    # APK 検出
+    - name: Locate built APK
+      id: locate_apk
+      run: |
+        APK_PATH=$(find bin -maxdepth 1 -name "*.apk" | head -n 1)
+        if [ -z "$APK_PATH" ]; then
+          echo "APKファイルが見つかりませんでした" >&2
+          exit 1
+        fi
+        echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
 
-      - name: Upload full build log (on failure)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: buildozer-log
-          path: |
-            .buildozer/android/platform/build-*/build.log
-            .buildozer/**/*.log
-          if-no-files-found: ignore
+    # APK アップロード
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ESDUCT-debug-apk
+        path: ${{ steps.locate_apk.outputs.apk_path }}
+        if-no-files-found: error
+
+    # ログアップロード
+    - name: Upload full build log (on failure)
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: buildozer-log
+        path: |
+          .buildozer/android/platform/build-*/build.log
+          .buildozer/**/*.log
+        if-no-files-found: ignore
