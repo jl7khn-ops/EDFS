@@ -18,7 +18,7 @@ jobs:
             -v ${{ github.workspace }}:/home/buildozer \
             -w /home/buildozer \
             kivy/buildozer:latest \
-            android debug
+            bash -c "apt-get update && apt-get install -y autopoint gettext && buildozer android debug"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
