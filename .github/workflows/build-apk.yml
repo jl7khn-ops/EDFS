@@ -11,18 +11,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build custom Buildozer image
-        run: |
-          docker build -t custom-buildozer .
-
-      - name: Build APK
+      - name: Build APK using Buildozer Docker
         run: |
           docker run --rm \
             -e BUILDOZER_WARN_ON_ROOT=0 \
             -v ${{ github.workspace }}:/home/buildozer \
             -w /home/buildozer \
-            custom-buildozer \
-            buildozer android debug
+            kivy/buildozer:latest \
+            android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
