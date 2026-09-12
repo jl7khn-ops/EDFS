@@ -14,11 +14,12 @@ jobs:
       - name: Build APK using Buildozer Docker
         run: |
           docker run --rm \
+            --entrypoint /bin/bash \
             -e BUILDOZER_WARN_ON_ROOT=0 \
             -v ${{ github.workspace }}:/home/buildozer \
             -w /home/buildozer \
             kivy/buildozer:latest \
-            bash -c "apt-get update && apt-get install -y autopoint gettext && buildozer android debug"
+            -c "apt-get update && apt-get install -y autopoint gettext && buildozer android debug"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
