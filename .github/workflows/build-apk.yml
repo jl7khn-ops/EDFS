@@ -1,120 +1,24 @@
-name: Build ESDUCT APK
+name: Build APK
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 180
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
+      - name: Build APK using Buildozer (official Docker image)
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/home/buildozer \
+            kivy/buildozer:latest \
+            buildozer android debug
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: "17"
-
-    # Buildozer / p4a キャッシュ
-    - name: Cache buildozer global directory
-      uses: actions/cache@v4
-      with:
-        path: ~/.buildozer
-        key: buildozer-global-${{ hashFiles('buildozer.spec') }}
-        restore-keys: buildozer-global-
-
-    - name: Cache buildozer project directory
-      uses: actions/cache@v4
-      with:
-        path: .buildozer
-        key: buildozer-project-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
-        restore-keys: buildozer-project-${{ runner.os }}-
-
-    # 必須パッケージ
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y \
-          git zip unzip wget \
-          python3-pip python3-venv \
-          autoconf automake libtool pkg-config \
-          zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
-          cmake libffi-dev libssl-dev \
-          build-essential ccache
-
-    # ------------------------------------------------------------
-    # ★ NDK / SDK を事前配置（Broken pipe を完全に防ぐ）
-    # ------------------------------------------------------------
-    - name: Download Android NDK r25b
-      run: |
-        mkdir -p .buildozer/android/platform
-        wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-        unzip android-ndk-r25b-linux.zip -d .buildozer/android/platform/
-        mv .buildozer/android/platform/android-ndk-r25b .buildozer/android/platform/android-ndk-r25b
-
-    - name: Download Android SDK (command line tools)
-      run: |
-        mkdir -p .buildozer/android/platform/android-sdk
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip commandlinetools-linux-9477386_latest.zip -d .buildozer/android/platform/android-sdk
-
-    # ------------------------------------------------------------
-    # ★ python-for-android をローカル化（ネットワークアクセス禁止）
-    # ------------------------------------------------------------
-    - name: Clone python-for-android (local source)
-      run: |
-        mkdir -p .buildozer/android/platform
-        git clone --depth 1 https://github.com/kivy/python-for-android.git \
-          .buildozer/android/platform/python-for-android
-
-    # Buildozer + Cython
-    - name: Install Buildozer and pinned Cython
-      run: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip install "Cython==0.29.36"
-        python3 -m pip install buildozer
-
-    # APK ビルド
-    - name: Build APK (debug)
-      run: |
-        yes | buildozer -v android debug
-
-    # APK 検出
-    - name: Locate built APK
-      id: locate_apk
-      run: |
-        APK_PATH=$(find bin -maxdepth 1 -name "*.apk" | head -n 1)
-        if [ -z "$APK_PATH" ]; then
-          echo "APKファイルが見つかりませんでした" >&2
-          exit 1
-        fi
-        echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
-
-    # APK アップロード
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ESDUCT-debug-apk
-        path: ${{ steps.locate_apk.outputs.apk_path }}
-        if-no-files-found: error
-
-    # ログアップロード
-    - name: Upload full build log (on failure)
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: buildozer-log
-        path: |
-          .buildozer/android/platform/build-*/build.log
-          .buildozer/**/*.log
-        if-no-files-found: ignore
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: bin/*.apk
